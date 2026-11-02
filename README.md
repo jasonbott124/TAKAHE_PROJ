@@ -114,3 +114,7 @@ Other scripts reference further files under the same folder (`config.p("...")`).
 - `Velocity_Normal_Vectors.Strain_Deliverer`: `np.gradient` returns `[d/dy, d/dx]`, so `dudx` and `dvdy` are swapped there, and the rotation uses the normal rather than the flow direction. Use `strain_tools.strain_rates` instead (units 1/yr).
 - The docstring of `smooth_strains.py` says `from smooth_strain import ...`. The module is `smooth_strains`.
 - Several scripts are Spyder cell scripts that run on import. Import the functions you need rather than whole scripts.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
