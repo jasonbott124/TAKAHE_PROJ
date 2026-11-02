@@ -78,7 +78,6 @@ Run `Layer_Analysis_Master.py` cell by cell (Spyder `# %%` cells). It is the ent
 | `Flowband_Tracing_Not_Interactive.py` | Flowline/flowband tracing with GHF, RACMO, ALBMAP and Bedmap inputs (Sticky Spot work) |
 | `THW_BedPicks.py`, `Profile_Plot.py`, `Plot_Layers.py` | Thwaites bed picks, flowline profiles, 2.5D model layer output |
 | `Horizon_CSV_Scraper.py` | Splits a multi-horizon CSV export into one dataframe per horizon |
-| `Magma_Viscosity_Plots.py`, `Strk_Dip_Matcher.py` | Small side scripts (magma viscosity plot, strike/dip matching) |
 
 ## Setup
 
