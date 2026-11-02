@@ -1,0 +1,17 @@
+# data and outputs live outside the repo (see config.py / README)
+data/
+outputs/
+*.tif
+*.nc
+*.grd
+*.xyz
+*.tab
+*.pkl
+# python / editors
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.spyproject/
+.vscode/
+.idea/
+.DS_Store

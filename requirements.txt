@@ -1,0 +1,12 @@
+numpy
+scipy
+pandas
+matplotlib
+xarray
+netCDF4
+pyproj
+rasterio
+plotly
+cmocean
+tqdm
+Pillow
