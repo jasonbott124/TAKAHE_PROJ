@@ -71,6 +71,14 @@ Run `Layer_Analysis_Master.py` cell by cell (Spyder `# %%` cells). It is the ent
 | `Takahe_Map.py`, `Volcano_Profile.py`, `Radar_Plots.py` | Context maps, volcano profiles, radar-derived products |
 | `colormaps.py`, `Projection_Swapper.py`, `CoordConverter-Inc.py`, `BaseFilePicker.py` | Small utilities |
 | `config.py` | Every data and output path, in one place |
+| **From Flowband Code** | |
+| `layers_3D.py` | 3D view of the Bedmap3 bed and ice surface with the dated radar isochrones |
+| `nye_melt_at_x.py` | Interactive Nye-with-melt fit at one along-track position (uses `Nye_Melt.py`) |
+| `time_flowline.py` | Traces ice through the velocity field by time (where was this ice T years ago?) |
+| `Flowband_Tracing_Not_Interactive.py` | Flowline/flowband tracing with GHF, RACMO, ALBMAP and Bedmap inputs (Sticky Spot work) |
+| `THW_BedPicks.py`, `Profile_Plot.py`, `Plot_Layers.py` | Thwaites bed picks, flowline profiles, 2.5D model layer output |
+| `Horizon_CSV_Scraper.py` | Splits a multi-horizon CSV export into one dataframe per horizon |
+| `Magma_Viscosity_Plots.py`, `Strk_Dip_Matcher.py` | Small side scripts (magma viscosity plot, strike/dip matching) |
 
 ## Setup
 
