@@ -19,11 +19,12 @@ AGE_COLORS = ["#4c78a8", "#59a14f", "#f28e2b", "#e15759", "#b07aa1", "#76b7b2", 
 LABEL_FONT = "Arial Black, Arial, sans-serif"   # heavy face so labels read over the surfaces
 
 
-def _font(color, size):
-    """Bold label font; 'weight' needs plotly >= 5.23, older versions fall back to Arial Black."""
+def _font(color, size, family=LABEL_FONT):
+    """Bold label font. plotly >= 5.23: weight='bold'; older plotly: Arial Black."""
     import plotly
-    f = dict(color=color, size=size, family=LABEL_FONT)
-    if tuple(int(v) for v in plotly.__version__.split(".")[:2]) >= (5, 23):
+    new = tuple(int(v) for v in plotly.__version__.split(".")[:2]) >= (5, 23)
+    f = dict(color=color, size=size, family=family if new else LABEL_FONT)
+    if new:
         f["weight"] = "bold"
     return f
 
@@ -247,7 +248,7 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
             if pts:
                 xe, ye, ze = pts[-1]
                 fig.add_trace(go.Scatter3d(x=[xe], y=[ye], z=[ze], mode="text",
-                                           text=[f"{a:,.0f} yr"], textfont=dict(color=color, size=13, weight="bold"),
+                                           text=[f"{a:,.0f} yr"], textfont=_font(color, 13, family="Arial, sans-serif"),
                                            showlegend=False, hoverinfo="skip", legendgroup=label))
 
     # ---- flowlines draped on the ice surface
