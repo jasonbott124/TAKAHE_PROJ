@@ -50,20 +50,97 @@ def export_for_web(fig, out="index.html", title="Mt. Takahe: bed, ice surface an
                   currentvalue=dict(font=dict(color=FG)))
     fig.update_traces(selector=dict(type="surface"),
                       colorbar=dict(tickfont=dict(color=FG), title_font=dict(color=FG), thickness=12))
-    fig.write_html(
-        out, include_plotlyjs="cdn", full_html=True,
-        default_width="100%", default_height="100vh",
+    # never a fixed pixel size (plot_Surface_3D sets 1920x1080): fill the container instead
+    fig.layout.width = None
+    fig.layout.height = None
+    fig.update_layout(autosize=True)
+
+    import plotly.io as pio
+    plot_div = pio.to_html(
+        fig, include_plotlyjs="cdn", full_html=False, div_id="plot",
+        default_width="100%", default_height="100%",
         config=dict(responsive=True, displaylogo=False, scrollZoom=True,
                     modeBarButtonsToRemove=["toImage", "resetCameraLastSave3d"]),
     )
-    # phone viewport + no page margin
-    with open(out, encoding="utf-8") as f:
-        html = f.read()
-    html = html.replace(
-        "<head>",
-        '<head><meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Takahe 3D</title><style>html,body{{margin:0;background:{BG}}}</style>", 1)
+    html = PAGE.replace("{BG}", BG).replace("{FG}", FG).replace("{PLOT}", plot_div)
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
     mb = os.path.getsize(out) / 1e6
     print(f"wrote {out}: {mb:.1f} MB" + ("  <- heavy for phones; raise step/res" if mb > 15 else ""))
+
+
+# One-screen page: figure fills the space, native sliders in a compact bar underneath
+# (Plotly's own sliders are hard to grab on a phone because touches rotate the scene).
+PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Takahe 3D</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:{BG};color:{FG};
+            font:12px/1.3 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  #wrap{display:flex;flex-direction:column;height:100vh;height:100dvh}
+  #plotbox{flex:1;min-height:0}
+  #plotbox > div{height:100%}
+  #ctl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:4px 10px 8px;
+       border-top:1px solid rgba(255,255,255,.12)}
+  .row{flex:1 1 200px;min-width:0}
+  .row span{display:block;opacity:.85}
+  input[type=range]{width:100%;margin:2px 0;height:26px;accent-color:#f7d417}
+  @media (max-width:700px){ .modebar-container{display:none} }
+  button{background:#2a3a52;color:{FG};border:1px solid rgba(255,255,255,.3);border-radius:4px;
+         padding:6px 10px;font:inherit}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="plotbox">{PLOT}</div>
+  <div id="ctl"><button id="leg" type="button">Legend</button></div>
+</div>
+<script>
+(function init(){
+  var gd = document.getElementById('plot');
+  if (!gd || !gd.layout || !window.Plotly) { return setTimeout(init, 100); }
+  var ctl = document.getElementById('ctl');
+  var small = window.innerWidth < 700;
+  var sliders = JSON.parse(JSON.stringify(gd.layout.sliders || []));
+  var upd = {sliders: [], 'margin.l': 0, 'margin.r': 0, 'margin.b': 0, 'margin.t': small ? 30 : 40};
+  upd.showlegend = !small;
+  if (small) {
+    upd['title.font.size'] = 11;
+    upd['legend.font.size'] = 9;
+  }
+  Plotly.relayout(gd, upd);
+  sliders.forEach(function (s) {
+    var row = document.createElement('div'); row.className = 'row';
+    var lab = document.createElement('span');
+    var inp = document.createElement('input');
+    inp.type = 'range'; inp.min = 0; inp.max = s.steps.length - 1; inp.step = 1;
+    inp.value = s.active || 0;
+    var prefix = (s.currentvalue && s.currentvalue.prefix) || '';
+    function show(i){ lab.textContent = prefix + s.steps[i].label; }
+    show(+inp.value);
+    inp.addEventListener('input', function () {
+      var st = s.steps[+inp.value];
+      Plotly[st.method].apply(null, [gd].concat(st.args));
+      show(+inp.value);
+    });
+    row.appendChild(lab); row.appendChild(inp); ctl.insertBefore(row, ctl.lastElementChild);
+  });
+  if (small) {
+    var surf = [];
+    gd.data.forEach(function (t, i) { if (t.type === 'surface') surf.push(i); });
+    if (surf.length) Plotly.restyle(gd, {'colorbar.thickness': 8, 'colorbar.len': 0.4,
+      'colorbar.tickfont.size': 9, 'colorbar.title.font.size': 10, 'colorbar.x': 0.98}, surf);
+  }
+  Plotly.Plots.resize(gd);                       // fit the space left after the control bar
+  window.addEventListener('resize', function () { Plotly.Plots.resize(gd); });
+  document.getElementById('leg').addEventListener('click', function () {
+    Plotly.relayout(gd, {showlegend: !gd.layout.showlegend});
+  });
+})();
+</script>
+</body>
+</html>
+"""
