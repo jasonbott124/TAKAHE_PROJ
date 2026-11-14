@@ -34,7 +34,8 @@ def export_for_web(fig, out="index.html", title="Mt. Takahe: bed, ice surface an
         title=dict(text=title, x=0.5, font=dict(size=15, color=FG, family=layers_3D.LABEL_FONT)),
         paper_bgcolor=BG, plot_bgcolor=BG, font=dict(color=FG, size=12),
         margin=dict(l=0, r=0, t=40, b=0),
-        legend=dict(x=0.01, y=0.99, bgcolor="rgba(11,20,36,0.6)", font=dict(size=11, color=FG),
+        # light legend box (as in the original) so the age-coloured layer lines stay visible
+        legend=dict(x=0.01, y=0.99, bgcolor="rgba(255,255,255,0.85)", font=dict(size=11, color="#13243a"),
                     itemclick="toggle", itemdoubleclick="toggleothers"),
         scene=dict(xaxis=axis, yaxis=axis, zaxis=axis),
     )

@@ -68,6 +68,7 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
                    markers=None, flowlines=None, label_ages=True,
                    vel_interp=None, speed_on=None, speed_contours=None, speed_max=None, speed_opacity=0.6,
                    surface_contours=100.0, surface_contour_opacity=0.45, surface_contour_color="#2b2b2b",
+                   x_range=None,
                    title="Bed, ice surface and dated isochrones"):
     """
     Corrected_PST_list : Data.Corrected_PST_list / PST_layers (after the correction)
@@ -92,7 +93,12 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
     surface_contours   : elevation-contour interval (m) drawn on the ice surface; None = off
     surface_contour_opacity : contour-line opacity (surface is 0.25, or speed_opacity when speed-coloured)
     surface_contour_color   : contour-line colour
+    x_range            : (xmin, xmax) in EPSG:3031 m to crop the plot in x; either end may be None,
+                         e.g. (None, -1.25e6). Crops the grid, layers and flowlines.
     """
+    xlo, xhi = (x_range or (None, None))
+    xlo = -np.inf if xlo is None else xlo
+    xhi = np.inf if xhi is None else xhi
     psts = psts or list(Corrected_PST_list.keys())
 
     # ---- collect layer points (respecting optional limits)
@@ -102,7 +108,7 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
             x = np.asarray(L["x_array"], float)
             y = np.asarray(L["y_array"], float)
             z = np.asarray(L["z_array"], float)
-            keep = np.isfinite(x) & np.isfinite(y)
+            keep = np.isfinite(x) & np.isfinite(y) & (x >= xlo) & (x <= xhi)
             if limits_by_pst and pst in limits_by_pst and "abs_distance" in L:
                 a = np.asarray(L["abs_distance"], float)
                 lo, hi = limits_by_pst[pst]
@@ -124,7 +130,8 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
 
     # ---- Bedmap3 grid over the layers' extent
     xa, ya = np.concatenate(xs), np.concatenate(ys)
-    gx = np.arange(np.nanmin(xa) - pad, np.nanmax(xa) + pad + res, res)
+    gx = np.arange(max(np.nanmin(xa) - pad, xlo), min(np.nanmax(xa) + pad, xhi) + res, res)
+    gx = gx[gx <= xhi]
     gy = np.arange(np.nanmin(ya) - pad, np.nanmax(ya) + pad + res, res)
     GX, GY = np.meshgrid(gx, gy)
     bed = np.asarray(bm3["bed_interp"]((GX, GY)), float)
@@ -240,12 +247,14 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
             if pts:
                 xe, ye, ze = pts[-1]
                 fig.add_trace(go.Scatter3d(x=[xe], y=[ye], z=[ze], mode="text",
-                                           text=[f"{a:,.0f} yr"], textfont=_font(color, 15),
+                                           text=[f"{a:,.0f} yr"], textfont=dict(color=color, size=12),
                                            showlegend=False, hoverinfo="skip", legendgroup=label))
 
     # ---- flowlines draped on the ice surface
     for i, (label, fl) in enumerate((flowlines or {}).items()):
         fx, fy = np.asarray(fl[0], float), np.asarray(fl[1], float)
+        if x_range:
+            fx = np.where((fx >= xlo) & (fx <= xhi), fx, np.nan)   # NaN breaks the line outside
         fz = np.asarray(bm3["surf_interp"]((fx, fy)), float) + 0.01 * zspan
         tt = np.asarray(fl[2], float) if len(fl) > 2 else None
         fig.add_trace(go.Scatter3d(
@@ -268,7 +277,6 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
         scene=dict(xaxis_title="x EPSG:3031 (m)", yaxis_title="y EPSG:3031 (m)",
                    zaxis_title="Elevation (m)",
                    aspectmode="manual", aspectratio=dict(x=xr, y=xr * yspan / xspan, z=exag)))
-    style_labels(fig)
     add_surface_opacity_slider(fig)
     return fig
 
@@ -283,18 +291,26 @@ def _is_flowline_trace(t):
     return "flow" in grp or "flow" in name
 
 
-def style_labels(fig, age_size=15, marker_size=14, flow_size=13):
-    """Heavier age labels; flowline labels and marker labels (e.g. Mt. Takahe) in white."""
+def _is_isochrone_trace(t):
+    grp = (getattr(t, "legendgroup", None) or "").lower()
+    name = (getattr(t, "name", None) or "").lower()
+    return "isochrone" in grp or "isochrone" in name
+
+
+def style_labels(fig, label_size=13):
+    """White, bold text for flowline / marker labels (e.g. Mt. Takahe).
+    Isochrone traces and their age labels are left exactly as plotted."""
     for t in fig.data:
-        if t.type != "scatter3d" or not t.mode or "text" not in t.mode:
+        if t.type != "scatter3d" or not t.mode or "text" not in t.mode or _is_isochrone_trace(t):
             continue
-        if _is_flowline_trace(t):
-            t.textfont = _font("white", flow_size)
-        elif "markers" in t.mode:                       # Takahe, dip picks, ...
-            t.textfont = _font("white", marker_size)
-        else:                                           # isochrone age labels: keep layer colour
-            col = t.textfont.color if t.textfont and t.textfont.color else "white"
-            t.textfont = _font(col, age_size)
+        t.textfont = _font("white", label_size)
+    for ann in (fig.layout.scene.annotations or []):     # labels added as scene annotations
+        txt = ann.text or ""
+        if not txt.startswith("<b>"):
+            ann.text = f"<b>{txt}</b>"
+        ann.font = dict(color="white", size=label_size)
+        if ann.arrowcolor in (None, "black", "#000", "#000000"):
+            ann.arrowcolor = "white"
     return fig
 
 
