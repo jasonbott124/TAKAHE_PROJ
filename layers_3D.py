@@ -30,8 +30,10 @@ def _font(color, size):
 
 
 # Landmark export lettering -> ages (years). Edit here if the key changes.
-AGE_KEY = {"D1": 640.0, "D2": 1210.0, "D3": 2100.0, "D4": 2240.0,
-           "D5": 2760.0, "D6": 4320.0, "D7": 1800.0}
+AGE_KEY = {"D1": 0.592, "D2": 1.185.0, "D3": 1.778.0, "D4": 2.224.0,
+           "D5": 2760.0, "D6": 4.260.0, "D7": 1800.0}
+
+# D1 0.592±0.014, D2 1.185±0.025, D7 1.778±0.038, D4 2.224±0.045, D6 4.260±0.099 ka AGE KEY (NEW); Good to note that I have no clue where the ages for D5 and D7 came from lol...!
 
 
 def _age_from_key(name, age_key):
