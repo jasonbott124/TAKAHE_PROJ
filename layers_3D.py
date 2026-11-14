@@ -247,7 +247,7 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
             if pts:
                 xe, ye, ze = pts[-1]
                 fig.add_trace(go.Scatter3d(x=[xe], y=[ye], z=[ze], mode="text",
-                                           text=[f"{a:,.0f} yr"], textfont=dict(color=color, size=12),
+                                           text=[f"{a:,.0f} yr"], textfont=dict(color=color, size=13, weight="bold"),
                                            showlegend=False, hoverinfo="skip", legendgroup=label))
 
     # ---- flowlines draped on the ice surface
@@ -298,19 +298,12 @@ def _is_isochrone_trace(t):
 
 
 def style_labels(fig, label_size=13):
-    """White, bold text for flowline / marker labels (e.g. Mt. Takahe).
+    """White, bold text for marker labels (e.g. Mt. Takahe).
     Isochrone traces and their age labels are left exactly as plotted."""
     for t in fig.data:
         if t.type != "scatter3d" or not t.mode or "text" not in t.mode or _is_isochrone_trace(t):
             continue
         t.textfont = _font("white", label_size)
-    for ann in (fig.layout.scene.annotations or []):     # labels added as scene annotations
-        txt = ann.text or ""
-        if not txt.startswith("<b>"):
-            ann.text = f"<b>{txt}</b>"
-        ann.font = dict(color="white", size=label_size)
-        if ann.arrowcolor in (None, "black", "#000", "#000000"):
-            ann.arrowcolor = "white"
     return fig
 
 
