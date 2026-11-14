@@ -23,15 +23,21 @@ FG = "#e8edf3"
 
 
 def export_for_web(fig, out="index.html", title="Mt. Takahe: bed, ice surface and dated isochrones"):
-    # labels + coupled surface/contour opacity slider (safe to re-run on any version of the figure)
-    layers_3D.style_labels(fig)
+    # sliders: surface/contour opacity + live vertical exaggeration (title follows the slider)
+    meta = dict(fig.layout.meta or {})
+    if meta:
+        meta["title_base"] = title
+        fig.update_layout(meta=meta)
     layers_3D.add_surface_opacity_slider(fig)
+    layers_3D.add_vertical_exaggeration_slider(fig)
+    ve = meta.get("vert_exag")
+    full_title = f"{title} ({ve:g}\u00d7 vertical exaggeration)" if ve else title
 
     axis = dict(color=FG, gridcolor="rgba(255,255,255,0.15)", backgroundcolor=BG,
                 showbackground=True, zerolinecolor="rgba(255,255,255,0.25)",
                 title_font=dict(size=13, family=layers_3D.LABEL_FONT))
     fig.update_layout(
-        title=dict(text=title, x=0.5, font=dict(size=15, color=FG, family=layers_3D.LABEL_FONT)),
+        title=dict(text=full_title, x=0.5, font=dict(size=15, color=FG, family=layers_3D.LABEL_FONT)),
         paper_bgcolor=BG, plot_bgcolor=BG, font=dict(color=FG, size=12),
         margin=dict(l=0, r=0, t=40, b=0),
         # light legend box (as in the original) so the age-coloured layer lines stay visible
@@ -39,10 +45,9 @@ def export_for_web(fig, out="index.html", title="Mt. Takahe: bed, ice surface an
                     itemclick="toggle", itemdoubleclick="toggleothers"),
         scene=dict(xaxis=axis, yaxis=axis, zaxis=axis),
     )
-    if fig.layout.sliders:
-        fig.layout.sliders[0].update(font=dict(color=FG), bgcolor="#2a3a52",
-                                     activebgcolor="#f7d417", bordercolor=FG,
-                                     currentvalue=dict(font=dict(color=FG)))
+    for sl in (fig.layout.sliders or []):
+        sl.update(font=dict(color=FG), bgcolor="#2a3a52", activebgcolor="#f7d417", bordercolor=FG,
+                  currentvalue=dict(font=dict(color=FG)))
     fig.update_traces(selector=dict(type="surface"),
                       colorbar=dict(tickfont=dict(color=FG), title_font=dict(color=FG), thickness=12))
     fig.write_html(

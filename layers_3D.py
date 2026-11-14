@@ -19,6 +19,17 @@ AGE_COLORS = ["#4c78a8", "#59a14f", "#f28e2b", "#e15759", "#b07aa1", "#76b7b2", 
 LABEL_FONT = "Arial Black, Arial, sans-serif"   # heavy face so labels read over the surfaces
 
 
+def bold_font(size=13, color=None, family="Arial, sans-serif"):
+    """A light bold: weight='bold' on plotly >= 5.23; on older plotly just the size (no Arial Black)."""
+    import plotly
+    f = dict(size=size, family=family)
+    if color is not None:
+        f["color"] = color
+    if tuple(int(v) for v in plotly.__version__.split(".")[:2]) >= (5, 23):
+        f["weight"] = "bold"
+    return f
+
+
 def _font(color, size, family=LABEL_FONT):
     """Bold label font. plotly >= 5.23: weight='bold'; older plotly: Arial Black."""
     import plotly
@@ -248,7 +259,7 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
             if pts:
                 xe, ye, ze = pts[-1]
                 fig.add_trace(go.Scatter3d(x=[xe], y=[ye], z=[ze], mode="text",
-                                           text=[f"{a:,.0f} yr"], textfont=_font(color, 13, family="Arial, sans-serif"),
+                                           text=[f"{a:,.0f} yr"], textfont=dict(color=color, size=12),
                                            showlegend=False, hoverinfo="skip", legendgroup=label))
 
     # ---- flowlines draped on the ice surface
@@ -270,15 +281,17 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
         fig.add_trace(go.Scatter3d(x=[mx], y=[my], z=[mz + 0.03 * zspan], mode="markers+text",
                                    marker=dict(size=6, color="red", symbol="diamond"),
                                    text=[label], textposition="top center", name=label,
-                                   textfont=_font("white", 14)))
+                                   textfont=bold_font(14, "white")))
 
     fig.update_layout(
+        meta=dict(z_per_ve=exag / vert_exag, vert_exag=vert_exag, title_base=title),
         title=f"{title} ({vert_exag:g}x vertical exaggeration)",
         legend=dict(x=0.01, y=0.98, bgcolor="rgba(255,255,255,0.7)"),
         scene=dict(xaxis_title="x EPSG:3031 (m)", yaxis_title="y EPSG:3031 (m)",
                    zaxis_title="Elevation (m)",
                    aspectmode="manual", aspectratio=dict(x=xr, y=xr * yspan / xspan, z=exag)))
     add_surface_opacity_slider(fig)
+    add_vertical_exaggeration_slider(fig)
     return fig
 
 
@@ -338,7 +351,30 @@ def add_surface_opacity_slider(fig, steps=None, y=0.0):
         slider_steps.append(dict(method="restyle", label=f"{v:g}",
                                  args=[{"opacity": vals, "visible": vis}, ids]))
     active = min(range(len(steps)), key=lambda j: abs(steps[j] - s0))
-    fig.update_layout(sliders=[dict(active=active, steps=slider_steps, x=0.05, len=0.5, y=y,
-                                    currentvalue=dict(prefix="Ice surface opacity: "),
-                                    pad=dict(t=10, b=10))])
+    _set_slider(fig, dict(name="opacity", active=active, steps=slider_steps, x=0.02, len=0.45, y=y,
+                          currentvalue=dict(prefix="Ice surface opacity: "), pad=dict(t=10, b=10)))
+    return fig
+
+
+def _set_slider(fig, slider):
+    """Add a slider, replacing any existing one with the same name."""
+    keep = [sl for sl in (fig.layout.sliders or []) if sl.name != slider["name"]]
+    fig.layout.sliders = list(keep) + [slider]   # assign (update_layout would merge steps by index)
+
+
+def add_vertical_exaggeration_slider(fig, values=(1, 2, 5, 10, 25, 50), y=0.0):
+    """Slider that changes the vertical exaggeration live; the title updates to say the current value."""
+    meta = fig.layout.meta or {}
+    if "z_per_ve" not in meta:
+        return fig
+    base_ve = meta["vert_exag"]
+    values = sorted(set(values) | {base_ve})
+    base_title = meta.get("title_base", "")
+    steps = [dict(method="relayout", label=f"{v:g}\u00d7",
+                  args=[{"scene.aspectratio.z": float(meta["z_per_ve"] * v),
+                         "title.text": f"{base_title} ({v:g}\u00d7 vertical exaggeration)"}])
+             for v in values]
+    _set_slider(fig, dict(name="vert_exag", active=values.index(base_ve), steps=steps,
+                          x=0.53, len=0.45, y=y, pad=dict(t=10, b=10),
+                          currentvalue=dict(prefix="Vertical exaggeration: ")))
     return fig
