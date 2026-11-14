@@ -16,6 +16,16 @@ import numpy as np
 import plotly.graph_objects as go
 
 AGE_COLORS = ["#4c78a8", "#59a14f", "#f28e2b", "#e15759", "#b07aa1", "#76b7b2", "#edc948", "#9c755f"]
+LABEL_FONT = "Arial Black, Arial, sans-serif"   # heavy face so labels read over the surfaces
+
+
+def _font(color, size):
+    """Bold label font; 'weight' needs plotly >= 5.23, older versions fall back to Arial Black."""
+    import plotly
+    f = dict(color=color, size=size, family=LABEL_FONT)
+    if tuple(int(v) for v in plotly.__version__.split(".")[:2]) >= (5, 23):
+        f["weight"] = "bold"
+    return f
 
 
 
@@ -228,7 +238,7 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
             if pts:
                 xe, ye, ze = pts[-1]
                 fig.add_trace(go.Scatter3d(x=[xe], y=[ye], z=[ze], mode="text",
-                                           text=[f"{a:,.0f} yr"], textfont=dict(color=color, size=12),
+                                           text=[f"{a:,.0f} yr"], textfont=_font(color, 15),
                                            showlegend=False, hoverinfo="skip", legendgroup=label))
 
     # ---- flowlines draped on the ice surface
@@ -247,7 +257,8 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
         mz = float(np.asarray(bm3["surf_interp"]((np.array([mx]), np.array([my])))).ravel()[0])
         fig.add_trace(go.Scatter3d(x=[mx], y=[my], z=[mz + 0.03 * zspan], mode="markers+text",
                                    marker=dict(size=6, color="red", symbol="diamond"),
-                                   text=[label], textposition="top center", name=label))
+                                   text=[label], textposition="top center", name=label,
+                                   textfont=_font("white", 14)))
 
     fig.update_layout(
         title=f"{title} ({vert_exag:g}x vertical exaggeration)",
@@ -255,4 +266,67 @@ def plot_layers_3d(Corrected_PST_list, bm3, plot_surface_3d, *,
         scene=dict(xaxis_title="x EPSG:3031 (m)", yaxis_title="y EPSG:3031 (m)",
                    zaxis_title="Elevation (m)",
                    aspectmode="manual", aspectratio=dict(x=xr, y=xr * yspan / xspan, z=exag)))
+    style_labels(fig)
+    add_surface_opacity_slider(fig)
+    return fig
+
+
+# --------------------------------------------------------------------------------------
+# Post-processing helpers. They work on any figure built by plot_layers_3d (old or new
+# versions), so they can also be called on a figure that already exists.
+
+def _is_flowline_trace(t):
+    name = (getattr(t, "name", None) or "").lower()
+    grp = (getattr(t, "legendgroup", None) or "").lower()
+    return "flow" in grp or "flow" in name
+
+
+def style_labels(fig, age_size=15, marker_size=14, flow_size=13):
+    """Heavier age labels; flowline labels and marker labels (e.g. Mt. Takahe) in white."""
+    for t in fig.data:
+        if t.type != "scatter3d" or not t.mode or "text" not in t.mode:
+            continue
+        if _is_flowline_trace(t):
+            t.textfont = _font("white", flow_size)
+        elif "markers" in t.mode:                       # Takahe, dip picks, ...
+            t.textfont = _font("white", marker_size)
+        else:                                           # isochrone age labels: keep layer colour
+            col = t.textfont.color if t.textfont and t.textfont.color else "white"
+            t.textfont = _font(col, age_size)
+    return fig
+
+
+def _draped_trace_ids(fig):
+    """Index of the ice-surface Surface trace and of every contour line draped on it."""
+    surf = [i for i, t in enumerate(fig.data)
+            if t.type == "surface" and "ice surface" in (t.name or "").lower()]
+    cont = [i for i, t in enumerate(fig.data)
+            if t.type == "scatter3d" and t.mode == "lines" and (
+                (t.name or "").lower().startswith("surface contours")
+                or (t.legendgroup or "").startswith("spd"))]
+    return surf, cont
+
+
+def add_surface_opacity_slider(fig, steps=None, y=0.0):
+    """Slider for ice-surface opacity; draped contours fade with it and vanish at 0."""
+    surf, cont = _draped_trace_ids(fig)
+    if not surf:
+        return fig
+    s0 = fig.data[surf[0]].opacity
+    s0 = 0.25 if s0 is None else s0
+    c0 = {i: (1.0 if fig.data[i].opacity is None else fig.data[i].opacity) for i in cont}
+    steps = steps if steps is not None else [round(v, 2) for v in
+                                             [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]]
+    ids = surf + cont
+    slider_steps = []
+    for v in steps:
+        k = v / s0 if s0 > 0 else (0 if v == 0 else 1)
+        vals = [v] * len(surf) + [min(1.0, c0[i] * k) for i in cont]
+        vis = [True] * len(surf) + [v > 0] * len(cont)
+        slider_steps.append(dict(method="restyle", label=f"{v:g}",
+                                 args=[{"opacity": vals, "visible": vis}, ids]))
+    active = min(range(len(steps)), key=lambda j: abs(steps[j] - s0))
+    fig.update_layout(sliders=[dict(active=active, steps=slider_steps, x=0.05, len=0.5, y=y,
+                                    currentvalue=dict(prefix="Ice surface opacity: "),
+                                    pad=dict(t=10, b=10))])
     return fig
