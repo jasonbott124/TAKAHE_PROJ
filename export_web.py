@@ -89,6 +89,8 @@ PAGE = """<!DOCTYPE html>
   .row span{display:block;opacity:.85}
   input[type=range]{width:100%;margin:2px 0;height:26px;accent-color:#f7d417}
   @media (max-width:700px){ .modebar-container{display:none} }
+  .btns{display:flex;gap:6px}
+  #zin,#zout{min-width:40px;font-size:16px;font-weight:600}
   button{background:#2a3a52;color:{FG};border:1px solid rgba(255,255,255,.3);border-radius:4px;
          padding:6px 10px;font:inherit}
 </style>
@@ -96,7 +98,7 @@ PAGE = """<!DOCTYPE html>
 <body>
 <div id="wrap">
   <div id="plotbox">{PLOT}</div>
-  <div id="ctl"><button id="leg" type="button">Legend</button></div>
+  <div id="ctl"><div class="btns"><button id="zin" type="button" aria-label="Zoom in">+</button><button id="zout" type="button" aria-label="Zoom out">&minus;</button><button id="zreset" type="button">Reset</button><button id="leg" type="button">Legend</button></div></div>
 </div>
 <script>
 (function init(){
@@ -136,6 +138,23 @@ PAGE = """<!DOCTYPE html>
   }
   Plotly.Plots.resize(gd);                       // fit the space left after the control bar
   window.addEventListener('resize', function () { Plotly.Plots.resize(gd); });
+  // zoom buttons: pinch-zoom in 3D is unreliable on phones, so move the camera instead
+  function cam() {
+    var sc = gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene._scene;
+    var c = sc && sc.getCamera ? sc.getCamera() : (gd.layout.scene && gd.layout.scene.camera);
+    return JSON.parse(JSON.stringify(c || {eye: {x: 1.25, y: 1.25, z: 1.25}}));
+  }
+  var home = cam();
+  function zoom(f) {
+    var c = cam(), ce = c.center || {x: 0, y: 0, z: 0};
+    ['x', 'y', 'z'].forEach(function (k) { c.eye[k] = ce[k] + (c.eye[k] - ce[k]) * f; });
+    Plotly.relayout(gd, {'scene.camera': c});
+  }
+  document.getElementById('zin').addEventListener('click', function () { zoom(0.75); });
+  document.getElementById('zout').addEventListener('click', function () { zoom(1.33); });
+  document.getElementById('zreset').addEventListener('click', function () {
+    Plotly.relayout(gd, {'scene.camera': home});
+  });
   document.getElementById('leg').addEventListener('click', function () {
     Plotly.relayout(gd, {showlegend: !gd.layout.showlegend});
   });
