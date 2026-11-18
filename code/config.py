@@ -8,7 +8,7 @@ Files keep the same relative layout they had on the original machine
 """
 import os
 
-REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root (config.py lives in code/)
 DATA_DIR = os.environ.get("TAKAHE_DATA", os.path.join(REPO_DIR, "data"))
 OUT_DIR = os.environ.get("TAKAHE_OUT", os.path.join(REPO_DIR, "outputs"))
 
